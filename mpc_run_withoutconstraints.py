@@ -33,13 +33,18 @@ n = np.size(A, 0)
 I = np.eye(n)
 A = np.multiply(A, T) - I
 
-#输入矩阵
-B_1 = np.array([[0], [1], [0]])
-B_2 = x.T
+# 输入矩阵
+# B_1 = np.array([[0], [1], [0]])
+# B_2 = x.T
+#
+# B = B_1 @ B_2
 
-B = B_1 @ B_2
+# p = np.size(B, 1)
+# B = np.multiply(B, T)
+
+#更改输入矩阵B为恒定值
+B = np.array([[0], [1], [0]])
 p = np.size(B, 1)
-B = np.multiply(B, T)
 
 
 # 定义系统运行步数
@@ -50,8 +55,8 @@ x_history = np.zeros([n, k_steps])
 x_history [:,0] = x[:, 0]
 
 
-# 定义u_history零矩阵，用于储存系统输入结果，维度p x k_steps
-u_history = np.zeros([p,k_steps])
+# 定义u_history零矩阵，用于储存系统输入结果，维度1 x k_steps
+u_history = np.zeros([1, k_steps])
 
 # 定义预测区间，预测区间要小于系统运行步数
 N_P = 4
@@ -64,9 +69,9 @@ for k in range(k_steps-1):
     u = contro.MPC_Controller_noConstraints(x, F, H, p)
 
     #更新B
-    B_2 = x.T
-    B = B_1 @ B_2
-    B = np.multiply(B, T)
+    # B_2 = x.T
+    # B = B_1 @ B_2
+    # B = np.multiply(B, T)
 
     x = A @ x + B @ u
 
@@ -77,9 +82,6 @@ for k in range(k_steps-1):
     u_history[:, k] = u[:,0]
     print("第{}步的状态变量为 {:.2f},{:.2f},{:.2f}".format(k+1, x[0,0], x[1,0], x[2,0]),
           "输入为 {:.2f} {:.2f} {:.2f}".format(u[0,0],u[1,0],u[2,0]))
-
-
-
 
 ###############画图#################
 mpl.rcParams.update({'font.size': 10})
