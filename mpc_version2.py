@@ -3,10 +3,11 @@ import MPC_Matrics_pm as pm
 import MPC_controller as contro
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from cvxopt import matrix, solvers
 ########系统建模########
 
 
-# 建立一个1维的系统模型用于验证，即状态X只包括e e' f，每个均为标量
+# 建立一个1维的系统模型用于验证，即状态X只包括e e' f，每个均为标量 单步预测
 
 k = 0
 m = 1
@@ -40,7 +41,7 @@ A = np.array([[0,1,0],
 n = np.size(A, 0)  #维度
 I = np.eye(n)
 
-A = np.multiply(A, T) - I  #离散化以后的系统矩阵
+A = np.multiply(A, T) + I  #离散化以后的系统矩阵
 
 # 输入矩阵
 B_1 = np.array([[0], [1], [0]])
@@ -70,22 +71,21 @@ u_history = np.zeros([1, k_steps])
 # 定义预测区间，预测区间要小于系统运行步数
 N_P = 1  # 单步预测，保持系统的凸的
 #计算二次规划需用到的矩阵
-Phi, Gamma, Omega, Psi, F, H = pm.MPC_matrics(A, B, Q, R, S, N_P)
+Q_bar, p_, c_ = pm.MPC_matrics_single_prediction(A, B, Q, R, x)
 #不含二次规划需用到的矩阵
 
 
 for k in range(k_steps-1):
-    u = contro.MPC_Controller_noConstraints(x, F, H, p)
 
-    #更新B
-    # B_2 = x.T
-    # B = B_1 @ B_2
-    # B = np.multiply(B, T)
+    Q_bar = matrix(Q_bar)
+    p_ = matrix(p_.T)
+    c_ = matrix(c_)
+    solution = solvers.qp(Q_bar, p_)
+    solution = np.array(solution['x'])
+    u = solution[0:p, 0]
+    u = u.reshape(-1, 1)
 
-    x = A @ x + B @ u
 
-    # 更新矩阵
-    Phi, Gamma, Omega, Psi, F, H = pm.MPC_matrics(A, B, Q, R, S, N_P)
 
     x_history[:, k + 1] = x[:, 0]
     u_history[:, k] = u[:,0]

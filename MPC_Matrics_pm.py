@@ -42,3 +42,21 @@ def MPC_matrics(A, B, Q, R, S, N_P):
     H = Psi + Gamma.T @ Omega @Gamma
 
     return Phi, Gamma, Omega, Psi, F, H
+
+def MPC_matrics_single_prediction(A, B, Q, R, x):
+    #计算系统矩阵维度
+    n = np.size(A, 0)
+    p = np.size(B, 1)
+
+    B_temp = B.T @ Q
+    B_t = B_temp @ B
+
+    Q_bar = 2 * B_t + 2 * R
+    p_ = 2 * (B.T @ Q @ A @ x).T
+    c_ = x.T @ A.T @ Q @ A @ x
+
+    print(Q_bar)
+    print(p_)
+    print(c_)
+
+    return Q_bar, p_, c_

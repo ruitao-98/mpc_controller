@@ -55,3 +55,16 @@ print(np.multiply(A, T) - I)
 B = np.array([[0], [1], [0]])
 A @B
 print(B[:,0])
+print(2**3)
+
+x_0 = np.array([[1],[1],[2]])
+x = x_0
+
+# 输入矩阵
+B_1 = np.array([[0], [1], [0]])
+B_2 = x.T
+
+B = B_1 @ B_2
+B = np.multiply(T, B)  #
+
+print('B', B)
