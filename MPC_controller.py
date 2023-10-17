@@ -21,3 +21,14 @@ def MPC_Controller_Constraints(x,F,H,M,Beta_bar,b,p):
     u = solution[0:p, 0]
     u = u.reshape(-1, 1)
     return u
+
+def MPC_single_qpsolver(Q_bar,p_,c_,p, G, h, A, b):
+    Q_bar = matrix(Q_bar)
+    p_ = matrix(p_)
+    c_ = matrix(c_)
+    solution = solvers.qp(Q_bar, p_,G, h, A, b)
+    solution = np.array(solution['x'])
+    print(solution)
+    u = solution[0:p, 0]
+    u = u.reshape(-1, 1)
+    return u
