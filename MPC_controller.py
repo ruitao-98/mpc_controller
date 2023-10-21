@@ -26,9 +26,19 @@ def MPC_single_qpsolver(Q_bar,p_,c_,p, G, h, A, b):
     Q_bar = matrix(Q_bar)
     p_ = matrix(p_)
     c_ = matrix(c_)
+    G = matrix(G)
+    h = matrix(h)
+
+    A = matrix(A)
+    print(A)
+    b = [b]
+    b = matrix([b],(len(b), 1))
+    print(b)
+
+
+
     solution = solvers.qp(Q_bar, p_,G, h, A, b)
     solution = np.array(solution['x'])
-    print(solution)
-    u = solution[0:p, 0]
-    u = u.reshape(-1, 1)
+    u = solution[0:p, 0]  #只取第一个预测值
+    u = u.reshape(-1, 1) # 3*1
     return u

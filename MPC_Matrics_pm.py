@@ -44,9 +44,7 @@ def MPC_matrics(A, B, Q, R, S, N_P):
     return Phi, Gamma, Omega, Psi, F, H
 
 def MPC_matrics_single_prediction(A, B, Q, R, X):
-    #计算系统矩阵维度
-    n = np.size(A, 0)
-    p = np.size(B, 1)
+
 
     B_temp = B.T @ Q
     B_t = B_temp @ B
