@@ -165,6 +165,7 @@ for k in range(k_steps):
 
     #维度2
     Q_bar, p_, c_ = pm.MPC_matrics_single_prediction(A_2, B, Q, R, X)
+
     u = contro.MPC_single_qpsolver(Q_bar, p_, c_, p, G, h, At, b)
     print(u)
     x = A_1 @ X + B @ u

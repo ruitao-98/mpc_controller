@@ -54,8 +54,8 @@ At_1 = np.zeros((1,3))
 At_1[0,2] = m_1
 At_2 = np.zeros((1,3))
 At_2[0,2] = m_2
-b_1 = 1
-b_2 = 1
+b_1 = 1.0
+b_2 = 1.0
 ######约束
 
 
@@ -110,13 +110,15 @@ _B[2,:] = 1  # 3*1
 ################
 
 # 定义系统运行步数
-k_steps = 100
+k_steps = 200
 
 
 ######记录矩阵#####
 x_history1 = np.zeros([n, k_steps])  #记录状态变量，维度1
 x_history2 = np.zeros([n, k_steps])  #记录状态变量，维度2
 trajectory_history = np.zeros([2, k_steps])  #记录轨迹历史
+trajectory_history_d = np.zeros([2, k_steps])
+print(trajectory_history)
 force_history = np.zeros([2, k_steps])   #记录力轨迹
 
 # 定义u_history零矩阵，用于储存系统输入结果，维度1 x k_steps
@@ -185,54 +187,57 @@ for k in range(k_steps):
 
     Q_bar_1, p_1, c_1 = pm.MPC_matrics_single_prediction(A_K, B_1, Q_1, R_1, X_1)
     Q_bar_2, p_2, c_2 = pm.MPC_matrics_single_prediction(A_K, B_2, Q_2, R_2, X_2)
+
     u_1 = contro.MPC_single_qpsolver(Q_bar_1, p_1, c_1, p, G_1, h_1, At_1, b_1)
     u_2 = contro.MPC_single_qpsolver(Q_bar_2, p_2, c_2, p, G_2, h_2, At_2, b_2)
-    print(u_1)
-    print(u_2)
 
 
 
 
+##
     noise_1 = np.random.normal(noise_mean, noise_stddev, (3, 1))
     noise_2 = np.random.normal(noise_mean, noise_stddev, (3, 1))
+
+    # 此时计算得到的刚度矩阵，用于下一个时刻的状态转移使用，记住，状态是x_c - x_d，并不是真实的位姿
+
+
+
     x = A_ @ X_1 + B_1 @ u_1 + noise_1
     y = A_ @ X_2 + B_1 @ u_2 + noise_2
 
-    x_c = x[0,:]
-    x_c_ = x[1, :]
-    f_x = x[2, :]
+    x_c = x[0, 0] + x_d
+    x_c_ = x[1, 0] + x_d_
+    f_x = x[2, 0]
+    print(x_c)
 
-    y_c = y[0, :]
-    y_c_ = y[1, :]
-    f_y = y[2, :]   #更新状态
+    y_c = y[0, 0] + y_d
+    y_c_ = y[1, 0] + y_d_
+    f_y = y[2, 0]   #更新状态
 
-    # ######记录矩阵#####
-    # x_history1 = np.zeros([n, k_steps])  # 记录状态变量，维度1
-    # x_history2 = np.zeros([n, k_steps])  # 记录状态变量，维度2
-    # trajectory_history = np.zeros([2, k_steps])  # 记录轨迹历史
-    # force_history = np.zeros([2, k_steps])  # 记录力轨迹
-    #
-    # # 定义u_history零矩阵，用于储存系统输入结果，维度1 x k_steps
-    # u_history1 = np.zeros([n, k_steps - 1])  # 记录输入矩阵历史，维度1
-    # u_history2 = np.zeros([n, k_steps - 1])  # 记录输入矩阵历史，维度2
+
+
 
     x_history1[:, k] = x[:, 0]
     x_history2[:, k] = x[:, 0]
-    trajectory_history[:, k] = np.array([[x_c], [y_c]])
-    force_history[:,k] = np.array([[f_x], [f_y]])
+    trajectory_history[0, k] = x_c
+    trajectory_history[1, k] = y_c
+    force_history[0,k] = f_x
+    force_history[1,k] = f_y
+    X_d = np.array([[x_d],[y_d]])
+    trajectory_history_d[:, k] = X_d[:, 0]
 
     #刚度矩阵解算
     """
     x_1 = -k/m
-    x_2 = -d/m
+    x_2 = -d/mgai 
     x_2 = 1/m
     """
 
     K_1 = np.array([[-(1 / u_1[2, 0]) * u_1[0, 0]], [-(1 / u_1[2, 0]) * u_1[1, 0]], [1 / u_1[2, 0]]])  # k d m
     K_2 = np.array([[-(1 / u_2[2, 0]) * u_2[0, 0]], [-(1 / u_2[2, 0]) * u_2[1, 0]], [1 / u_2[2, 0]]])  # k d m
 
-    u_history1[: k] = K_1
-    u_history2[: k] = K_2
+    u_history1[:, k] = K_1[:,0]
+    u_history2[:, k] = K_2[:,0]
     print("第{}步的x维度状态变量为 {:.2f},{:.2f},{:.2f}".format(k, x[0,0], x[1,0], x[2,0]),
           "x维度的输入为 {:.2f} {:.2f} {:.2f}".format(u_1[0,0],u_1[1,0],u_2[2,0]))
 
@@ -253,24 +258,27 @@ plt.rc('font',  **font)
 
 fig = plt.figure(figsize=(10, 10))
 plt.figure()  # 创建第一个画布
-plt.plot(trajectory_history[0,:], trajectory_history[1,:],  linestyle='-', label="tranjectory",linewidth = 3.5, c='red')
+plt.plot(trajectory_history[0,:], trajectory_history[1,:],  linestyle='-', label="tranjectory",linewidth = 2, c='red')
+plt.plot(trajectory_history_d[0,:], trajectory_history_d[1,:],  linestyle='--', label="tranjectory_d",linewidth = 2, c='blue')
 plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
+plt.xlim(-15, 15)  # x轴范围从1到4
+plt.ylim(-15, 15)  # y轴范围从1到5
 
 plt.figure()  # 创建第二个画布
-plt.step(np.arange(0, u_history1.shape[1]), u_history1[0,:],  linestyle='-', label="u1_k",linewidth = 3.5, c='red')
-plt.step(np.arange(0, u_history1.shape[1]), u_history1[1,:],  linestyle='-', label="u1_d",linewidth = 3.5, c='blue')
-plt.step(np.arange(0, u_history1.shape[1]), u_history1[2,:],  linestyle='-', label="u1_m",linewidth = 3.5, c='green')
+plt.step(np.arange(0, u_history1.shape[1]), u_history1[0,:],  linestyle='-', label="u1_k",linewidth = 2, c='red')
+plt.step(np.arange(0, u_history1.shape[1]), u_history1[1,:],  linestyle='-', label="u1_d",linewidth = 2, c='blue')
+plt.step(np.arange(0, u_history1.shape[1]), u_history1[2,:],  linestyle='-', label="u1_m",linewidth = 2, c='green')
 plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
 
 plt.figure()  # 创建第三个画布
-plt.step(np.arange(0, u_history2.shape[1]), u_history2[0,:],  linestyle='-', label="u2_k",linewidth = 3.5, c='red')
-plt.step(np.arange(0, u_history2.shape[1]), u_history2[1,:],  linestyle='-', label="u2_d",linewidth = 3.5, c='blue')
-plt.step(np.arange(0, u_history2.shape[1]), u_history2[2,:],  linestyle='-', label="u2_m",linewidth = 3.5, c='green')
+plt.step(np.arange(0, u_history2.shape[1]), u_history2[0,:],  linestyle='-', label="u2_k",linewidth = 2, c='red')
+plt.step(np.arange(0, u_history2.shape[1]), u_history2[1,:],  linestyle='-', label="u2_d",linewidth = 2, c='blue')
+plt.step(np.arange(0, u_history2.shape[1]), u_history2[2,:],  linestyle='-', label="u2_m",linewidth = 2, c='green')
 plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
 
 plt.figure()  # 创建第四个画布
-plt.step(np.arange(0, force_history.shape[1]), force_history[0,:],  linestyle='-', label="f_x",linewidth = 3.5, c='red')
-plt.step(np.arange(0, force_history.shape[1]), force_history[1,:],  linestyle='-', label="f_y",linewidth = 3.5, c='blue')
+plt.step(np.arange(0, force_history.shape[1]), force_history[0,:],  linestyle='-', label="f_x",linewidth = 2, c='red')
+plt.step(np.arange(0, force_history.shape[1]), force_history[1,:],  linestyle='-', label="f_y",linewidth = 2, c='blue')
 plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
 
 plt.show()
