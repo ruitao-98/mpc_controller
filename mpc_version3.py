@@ -14,8 +14,6 @@ x_2 = -d/m
 x_2 = 1/m
 """
 
-
-
 # 建立一个2维的系统模型用于验证，即状态X只包括e e' f，每个均为标量 单步预测
 k_1 = 0
 k_2 = 0
@@ -169,8 +167,8 @@ for k in range(k_steps):
     e_2 = y_c - y_d
     e_1_ = x_c_ - x_d_
     e_2_ = y_c_ - y_d_
-    # e_1__ = x_c__ - x_d__
-    # e_2__ = y_c__ - y_d__  #计算偏差
+    e_1__ = x_c__ - x_d__
+    e_2__ = y_c__ - y_d__  #计算偏差
 
     X_1 = np.array([[e_1], [e_1_], [f_x]])
     X_2 = np.array([[e_2], [e_2_], [f_y]])
@@ -191,34 +189,51 @@ for k in range(k_steps):
     u_1 = contro.MPC_single_qpsolver(Q_bar_1, p_1, c_1, p, G_1, h_1, At_1, b_1)
     u_2 = contro.MPC_single_qpsolver(Q_bar_2, p_2, c_2, p, G_2, h_2, At_2, b_2)
 
-
-
+    K_1 = np.array([[-(1 / u_1[2, 0]) * u_1[0, 0]], [-(1 / u_1[2, 0]) * u_1[1, 0]], [1 / u_1[2, 0]]])  # k d m
+    K_2 = np.array([[-(1 / u_2[2, 0]) * u_2[0, 0]], [-(1 / u_2[2, 0]) * u_2[1, 0]], [1 / u_2[2, 0]]])  # k d m
+    k_1 = K_1[0,0]
+    d_1 = K_1[1,0]
+    m_1 = K_1[2,0]
+    k_2 = K_2[0,0]
+    d_2 = K_2[1,0]
+    m_2 = K_2[2,0]
 
 ##
-    noise_1 = np.random.normal(noise_mean, noise_stddev, (3, 1))
-    noise_2 = np.random.normal(noise_mean, noise_stddev, (3, 1))
+    noise_1 = np.random.normal(noise_mean, noise_stddev)
+    noise_2 = np.random.normal(noise_mean, noise_stddev)
 
     # 此时计算得到的刚度矩阵，用于下一个时刻的状态转移使用，记住，状态是x_c - x_d，并不是真实的位姿
+    # 计算加速度
+    # e_1__ = (1/m_1)(f_x - b_1*e_1_ - k_1*e_1)
+    # e_1_ = e_1_ + e_1__*T
+    # e_1 = e_1 + e_1_*T
+    # x_c = x_c
+    #
+    # e_2__ = (1/m_2)(f_y - b_2*e_2_ - k_2*e_2)
+    # e_2_ = e_2_ + e_2__*T
+    # e_2 = e_2 + e_2_*T
+    print(m_1)
+    print(b_1)
+    print(k_1)
+    print(f_x)
+    print(e_1_)
+    f_x = noise_1+f_x
+    f_y = noise_2
+    x_c__ = (1/m_1)*(f_x - b_1*e_1_ - k_1*e_1) + x_d__
+    x_c_ = x_c_ + x_c__*T
+    x_c = x_c + x_c_*T
+
+    y_c__ = (1/m_2)*(f_y - b_2*e_2_ - k_2*e_2) + y_d__
+    y_c_ = y_c_ + y_c__*T
+    y_c = y_c + y_c_*T
 
 
 
-    x = A_ @ X_1 + B_1 @ u_1 + noise_1
-    y = A_ @ X_2 + B_1 @ u_2 + noise_2
+    # x = A_ @ X_1 + B_1 @ u_1 + noise_1
+    # y = A_ @ X_2 + B_1 @ u_2 + noise_2
 
-    x_c = x[0, 0] + x_d
-    x_c_ = x[1, 0] + x_d_
-    f_x = x[2, 0]
-    print(x_c)
-
-    y_c = y[0, 0] + y_d
-    y_c_ = y[1, 0] + y_d_
-    f_y = y[2, 0]   #更新状态
-
-
-
-
-    x_history1[:, k] = x[:, 0]
-    x_history2[:, k] = x[:, 0]
+    # x_history1[:, k] = x[:, 0]
+    # x_history2[:, k] = x[:, 0]
     trajectory_history[0, k] = x_c
     trajectory_history[1, k] = y_c
     force_history[0,k] = f_x
@@ -233,13 +248,12 @@ for k in range(k_steps):
     x_2 = 1/m
     """
 
-    K_1 = np.array([[-(1 / u_1[2, 0]) * u_1[0, 0]], [-(1 / u_1[2, 0]) * u_1[1, 0]], [1 / u_1[2, 0]]])  # k d m
-    K_2 = np.array([[-(1 / u_2[2, 0]) * u_2[0, 0]], [-(1 / u_2[2, 0]) * u_2[1, 0]], [1 / u_2[2, 0]]])  # k d m
+
 
     u_history1[:, k] = K_1[:,0]
     u_history2[:, k] = K_2[:,0]
-    print("第{}步的x维度状态变量为 {:.2f},{:.2f},{:.2f}".format(k, x[0,0], x[1,0], x[2,0]),
-          "x维度的输入为 {:.2f} {:.2f} {:.2f}".format(u_1[0,0],u_1[1,0],u_2[2,0]))
+    # print("第{}步的x维度状态变量为 {:.2f},{:.2f},{:.2f}".format(k, x[0,0], x[1,0], x[2,0]),
+    #       "x维度的输入为 {:.2f} {:.2f} {:.2f}".format(u_1[0,0],u_1[1,0],u_2[2,0]))
 
 ###############画图#################
 mpl.rcParams.update({'font.size': 10})
