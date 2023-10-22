@@ -108,7 +108,7 @@ _B[2,:] = 1  # 3*1
 ################
 
 # 定义系统运行步数
-k_steps = 200
+k_steps = 50
 
 
 ######记录矩阵#####
@@ -244,7 +244,7 @@ for k in range(k_steps):
     #刚度矩阵解算
     """
     x_1 = -k/m
-    x_2 = -d/mgai 
+    x_2 = -d/m
     x_2 = 1/m
     """
 
@@ -291,8 +291,8 @@ plt.step(np.arange(0, u_history2.shape[1]), u_history2[2,:],  linestyle='-', lab
 plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
 
 plt.figure()  # 创建第四个画布
-plt.step(np.arange(0, force_history.shape[1]), force_history[0,:],  linestyle='-', label="f_x",linewidth = 2, c='red')
-plt.step(np.arange(0, force_history.shape[1]), force_history[1,:],  linestyle='-', label="f_y",linewidth = 2, c='blue')
+plt.plot(np.arange(0, force_history.shape[1]), force_history[0,:],  linestyle='-', label="f_x",linewidth = 2, c='red')
+plt.plot(np.arange(0, force_history.shape[1]), force_history[1,:],  linestyle='-', label="f_y",linewidth = 2, c='blue')
 plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
 
 plt.show()
