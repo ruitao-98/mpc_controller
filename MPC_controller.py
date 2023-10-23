@@ -28,13 +28,8 @@ def MPC_single_qpsolver(Q_bar,p_,c_,p, G, h, A, b):
     c_ = matrix(c_)
     G = matrix(G)
     h = matrix(h)
-
     A = matrix(A)
-
-
     b = matrix([b])
-
-    # A, b
 
     solution = solvers.qp(Q_bar, p_, G, h, A, b)
     solution = np.array(solution['x'])
