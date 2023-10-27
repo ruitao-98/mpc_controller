@@ -22,7 +22,7 @@ k_1 = 100
 k_2 = k_1
 m_1 = 1
 m_2 = 1
-d_1 = 20
+d_1 = 60
 d_2 = d_1
 
 
@@ -58,7 +58,7 @@ _B[1,:] = 1  # 3*1
 ################
 
 # 定义系统运行步数
-k_steps = 200
+k_steps = 500
 
 
 ######记录矩阵#####
@@ -142,9 +142,9 @@ for k in range(k_steps):
     # e_2_ = e_2_ + e_2__*T
     # e_2 = e_2 + e_2_*T
 
-    if ((k > 0) & (k<150)):
-        f_x = noise_1
-        f_y = noise_2
+    if ((k > 20) & (k<100)):
+        f_x = 100
+        f_y = 100
         x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__
         x_c_ = x_c_ + x_c__*T
         x_c = x_c + x_c_*T
@@ -153,8 +153,9 @@ for k in range(k_steps):
         y_c_ = y_c_ + y_c__*T
         y_c = y_c + y_c_*T
     else:
-        x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__
-        x_c_ = x_c_ + x_c__*T
+        f_x = f_y = 0
+        x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__  #计算加速度
+        x_c_ = x_c_ + x_c__*T  #使用欧拉法进行积分
         x_c = x_c + x_c_*T
         # f_x = -k_e * T * e_1_ + f_x
 
@@ -210,7 +211,7 @@ plt.plot(trajectory_history_d[0,:], trajectory_history_d[1,:],  linestyle='--', 
 plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
 plt.xlim(-15, 15)  # x轴范围从1到4
 plt.ylim(-15, 15)  # y轴范围从1到5
-plt.savefig("trajectory.png", dpi=600)
+plt.savefig("trajectory_constant.png", dpi=600)
 
 # plt.figure(figsize=(8, 8))  # 创建第二个画布
 # plt.step(np.arange(0, u_history1.shape[1]), u_history1[0,:],  linestyle='-', label="u1_k",linewidth = 2, c='red')

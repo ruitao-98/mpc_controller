@@ -5,6 +5,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from cvxopt import matrix, solvers
 import math
+from casadi import *
 ########系统建模########
 
 
@@ -14,7 +15,7 @@ x_2 = -d/m
 x_2 = 1/m
 """
 
-# 建立一个2维的系统模型用于验证，即状态X只包括e e' f，每个均为标量 单步预测
+# 建立一个2维的系统模型用于验证，即状态X只包括e e' f，每个均为标量 多步预测 序列化求解
 k_1 = 0
 k_2 = 0
 m_1 = 1
