@@ -33,6 +33,7 @@ states = ca.vertcat(states, theta)  # 实际上也可以通过
 # states = ca.vertcat(*[x, y, theta])
 # 或者 ca.vcat([x, y, theta)一步实现
 n_states = states.size()[0]  # 获得系统状态的尺寸，向量以（n_states, 1）的格式呈现 【这点很重要】
+
 ## 控制输入
 v = ca.SX.sym('v')  # 前向速度
 omega = ca.SX.sym('omega')  # 转动速度
@@ -41,7 +42,7 @@ n_controls = controls.size()[0]  # 控制向量尺寸
 # 运动学模型
 rhs = ca.vertcat(v * np.cos(theta), v * np.sin(theta))
 rhs = ca.vertcat(rhs, omega)
-print(rhs)
+
 # 利用CasADi构建一个函数
 f = ca.Function('f', [states, controls], [rhs], ['input_state', 'control_input'], ['rhs'])
 

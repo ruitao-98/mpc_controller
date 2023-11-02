@@ -5,7 +5,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from cvxopt import matrix, solvers
 import math
-from casadi import *
+import casadi as ca
 ########系统建模########
 
 
@@ -14,7 +14,6 @@ x_1 = -k/m
 x_2 = -d/m
 x_2 = 1/m
 """
-
 # 建立一个2维的系统模型用于验证，即状态X只包括e e' f，每个均为标量 多步预测 序列化求解
 k_1 = 0
 k_2 = 0
@@ -30,6 +29,96 @@ k_max = 1500
 d_min = 20
 d_max = 100
 c = m_1
+
+#系统矩阵，维度1和维度2是同样的系统矩阵
+A_temp = np.array([[0,1,0],
+             [0,0,0],
+             [0,0,0]])
+
+T = 0.01  # 控制周期
+N = 5  # 需要预测的步长【超参数】
+
+A_1 = np.copy(A_temp)  #不带K的矩阵
+A_temp[2, 1] = k_e
+A_2 = A_temp   #带K的系统矩阵 3*3
+print(A_2)
+#离散
+n = np.size(A_2, 0)  #维度 3
+I = np.eye(n)
+A_K = np.multiply(A_2, T) + I  #离散化以后的系统矩阵, with K 3*3
+A_ = np.multiply(A_1, T) + I  #离散化以后的系统矩阵, without K 3*3
+# 输入矩阵，根据状态更新矩阵
+_B = np.zeros((3, 1))
+_B[1,:] = 1  # 3*1
+
+
+
+
+## 系统状态，分为维度1和维度2
+e_1 = ca.SX.sym('e_1')  # 位置差
+e_1_ = ca.SX.sym('e_1_')  # 速度差
+f_x = ca.SX.sym('fx')  # 力
+states1 = ca.vertcat(e_1, e_1_)  # 构建位置速度差
+states1 = ca.vertcat(states1, f_x)  # 包括力增广
+# states = ca.vertcat(*[x, y, theta])
+# 或者 ca.vcat([x, y, theta)一步实现
+n_states = states1.size()[0]  # 获得系统状态的尺寸，向量以（n_states, 1）的格式呈现
+
+e_2 = ca.SX.sym('e_2')  # 位置差
+e_2_ = ca.SX.sym('e_2_')  # 速度差
+f_y = ca.SX.sym('fy')  # 力
+states2 = ca.vertcat(e_2, e_2_)  # 构建位置速度差
+states2 = ca.vertcat(states2, f_y)  # 包括力增广
+
+#控制系统输入
+u1_1 = ca.SX.sym('u1_1')  # 输入1
+u1_2 = ca.SX.sym('u1_2')  # 输入2
+u1_3 = ca.SX.sym('u1_3')  # 输入3
+controls1 = ca.vertcat(u1_1, u1_2)  # 控制向量
+controls1 = ca.vertcat(controls1, u1_3)  # 控制向量
+n_controls = controls1.size()[0]  # 控制向量尺寸
+
+u2_1 = ca.SX.sym('u2_1')  # 输入1
+u2_2 = ca.SX.sym('u2_2')  # 输入2
+u2_3 = ca.SX.sym('u2_3')  # 输入3
+controls2 = ca.vertcat(u2_1, u2_2)  # 控制向量
+controls2 = ca.vertcat(controls2, u2_3)  # 控制向量
+
+# K_1 = np.array([[-(1 / u_1[2, 0]) * u_1[0, 0]], [-(1 / u_1[2, 0]) * u_1[1, 0]], [1 / u_1[2, 0]]])  # k d m
+# x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__
+# 运动学模型
+rhs1 = ca.vertcat( e_1_, (1/u1_3)*(f_x - (-u1_2/u1_3) * e_1_ - (-u1_1/u1_3) * e_1))
+rhs1 = ca.vertcat(rhs1, 0)
+rhs2 = ca.vertcat( e_2_, (1/u2_3)*(f_y - (-u2_2/u2_3) * e_2_ - (-u2_1/u2_3) * e_2))
+rhs2 = ca.vertcat(rhs2, 0)
+# 利用CasADi构建一个函数
+f1 = ca.Function('f', [states1, controls1], [rhs1], ['input_state1', 'control_input1'], ['rhs1'])
+f2 = ca.Function('f', [states2, controls2], [rhs2], ['input_state2', 'control_input2'], ['rhs2'])
+
+# 开始构建MPC
+## 相关变量，格式(状态长度， 步长)
+U = ca.SX.sym('U', n_controls, N)  # N步内的控制输出
+X = ca.SX.sym('X', n_states, N + 1)  # N+1步的系统状态，通常长度比控制多1
+P = ca.SX.sym('P', n_states + n_states)  # 构建问题的相关参数
+# 在这里每次只需要给定当前/初始位置和目标终点位置
+
+## NLP问题
+### 惩罚矩阵
+Q = np.array([[0.1,0,0],
+                [0,0.1,0],
+                [0,0,20]])  # 过程损失
+R = np.array([[10**(-6), 0, 0],
+              [0, 10**(-6), 0],
+              [0, 0, 10**(-6)]])  #输入损失
+### 优化目标
+obj = 0  # 初始化优化目标值
+for i in range(N):
+    # 在N步内对获得优化目标表达式
+    obj = obj + ca.mtimes([(X[:, i] - P[3:]).T, Q, X[:, i] - P[3:]]) + ca.mtimes([U[:, i].T, R, U[:, i]])
+
+
+
+
 
 G_1 = np.zeros((4, 3))
 G_1[0, 0] = -c
@@ -87,25 +176,7 @@ R_2 = np.array([[10**(-6), 0, 0],
 
 
 
-#系统矩阵，维度1和维度2是同样的系统矩阵
-A_temp = np.array([[0,1,0],
-             [0,0,0],
-             [0,0,0]])
 
-T = 0.01  # 控制周期
-
-A_1 = np.copy(A_temp)  #不带K的矩阵
-A_temp[2, 1] = k_e
-A_2 = A_temp   #带K的系统矩阵 3*3
-print(A_2)
-#离散
-n = np.size(A_2, 0)  #维度 3
-I = np.eye(n)
-A_K = np.multiply(A_2, T) + I  #离散化以后的系统矩阵, with K 3*3
-A_ = np.multiply(A_1, T) + I  #离散化以后的系统矩阵, without K 3*3
-# 输入矩阵，根据状态更新矩阵
-_B = np.zeros((3, 1))
-_B[1,:] = 1  # 3*1
 
 ################
 
