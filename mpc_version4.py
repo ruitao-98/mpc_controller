@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from cvxopt import matrix, solvers
 import math
 import casadi as ca
+import time
 ########系统建模########
 
 
@@ -29,6 +30,10 @@ k_max = 1500
 d_min = 20
 d_max = 100
 c = m_1
+
+#旋转的角速度和旋转半径
+omega = 2
+raduis = 10
 
 #系统矩阵，维度1和维度2是同样的系统矩阵
 A_temp = np.array([[0,1,0],
@@ -97,85 +102,199 @@ f2 = ca.Function('f', [states2, controls2], [rhs2], ['input_state2', 'control_in
 
 # 开始构建MPC
 ## 相关变量，格式(状态长度， 步长)
-U = ca.SX.sym('U', n_controls, N)  # N步内的控制输出
-X = ca.SX.sym('X', n_states, N + 1)  # N+1步的系统状态，通常长度比控制多1
-P = ca.SX.sym('P', n_states + n_states)  # 构建问题的相关参数
+U1 = ca.SX.sym('U1', n_controls, N)  # N步内的控制输出
+X1 = ca.SX.sym('X1', n_states, N + 1)  # N+1步的系统状态，通常长度比控制多1
+P1 = ca.SX.sym('P1', n_states + n_states)  # 构建问题的相关参数
+U2 = ca.SX.sym('U2', n_controls, N)  # N步内的控制输出
+X2 = ca.SX.sym('X2', n_states, N + 1)  # N+1步的系统状态，通常长度比控制多1
+P2 = ca.SX.sym('P2', n_states + n_states)  # 构建问题的相关参数
 # 在这里每次只需要给定当前/初始位置和目标终点位置
 
 ## NLP问题
 ### 惩罚矩阵
-Q = np.array([[0.1,0,0],
+Q = np.array([[20,0,0],
                 [0,0.1,0],
-                [0,0,20]])  # 过程损失
+                [0,0,0.1]])  # 过程损失
 R = np.array([[10**(-6), 0, 0],
               [0, 10**(-6), 0],
               [0, 0, 10**(-6)]])  #输入损失
 ### 优化目标
-obj = 0  # 初始化优化目标值
+obj1 = 0  # 初始化优化目标值
+obj2 = 0  # 初始化优化目标值
 for i in range(N):
     # 在N步内对获得优化目标表达式
-    obj = obj + ca.mtimes([(X[:, i] - P[3:]).T, Q, X[:, i] - P[3:]]) + ca.mtimes([U[:, i].T, R, U[:, i]])
+    obj1 = obj1 + ca.mtimes([(X1[:, i]).T, Q, X1[:, i]]) + ca.mtimes([U1[:, i].T, R, U1[:, i]])
+    obj2 = obj2 + ca.mtimes([(X2[:, i]).T, Q, X2[:, i]]) + ca.mtimes([U2[:, i].T, R, U2[:, i]])
+
+#### 在预测周期内的状态和输入的变化情况
+# 初始状态
+# 机器人初始位置以及力信息
+x_c = math.cos(0) * raduis
+y_c = math.sin(0) * raduis  #位置
+x_c_ = 0
+y_c_ = 0   #速度
+x_c__ = 0
+y_c__ = 0  #加速度
+f_x = 0
+f_y = 0
+fd_x = 0
+fd_y = 0
+x_d = math.cos(omega * 0) * raduis
+y_d = math.sin(omega * 0) * raduis  # 期望轨迹
+x_d_ = -raduis * omega * math.sin(omega * 0)
+y_d_ = raduis * omega * math.cos(omega * 0)  # 期望轨迹一阶导
+x_d__ = -raduis * (omega ** 2) * math.cos(omega * 0)
+y_d__ = -raduis * (omega ** 2) * math.sin(omega * 0)  # 期望轨迹二阶导
+e_1 = x_c - x_d
+e_2 = y_c - y_d
+e_1_ = x_c_ - x_d_
+e_2_ = y_c_ - y_d_
+e_1__ = x_c__ - x_d__
+e_2__ = y_c__ - y_d__  # 计算偏差
+
+#初始状态
+X1[0, 0] = e_1_
+X1[1, 0] = e_1
+X1[2, 0] = 0
+X2[0, 0] = e_2_
+X2[1, 0] = e_2
+X2[2, 0] = 0
+for i in range(N):
+    f_value1 = f1(X1[:, i], U1[:, i])
+    f_value2 = f2(X2[:, i], U2[:, i])
+    x_c__ = f_value1 + x_d__
+    x_c_ = x_c_ + x_c__ * T
+    x_c = x_c_ + x_c_ * T
+    y_c__ = f_value2 + y_d__
+    y_c_ = y_c_ + y_c__ * T
+    y_c = y_c_ + y_c_ * T
+
+    # 更新参数，此时到达i+1时刻
+    x_d = math.cos(omega * i + 1) * raduis
+    y_d = math.sin(omega * i + 1) * raduis  #期望轨迹
+    x_d_ = -raduis * omega * math.sin(omega * i + 1)
+    y_d_ = raduis * omega * math.cos(omega * i + 1)  #期望轨迹一阶导
+    x_d__ = -raduis * (omega ** 2) * math.cos(omega * i + 1)
+    y_d__ = -raduis * (omega ** 2) * math.sin(omega * i + 1)   #期望轨迹二阶导
+
+    e_1 = x_c - x_d
+    e_2 = y_c - y_d
+    e_1_ = x_c_ - x_d_
+    e_2_ = y_c_ - y_d_
+    e_1__ = x_c__ - x_d__
+    e_2__ = y_c__ - y_d__  #计算偏差
+    # 更新机器人状态
+    X1[0, i + 1] = e_1_
+    X1[1, i + 1] = e_1
+    X1[2, i + 1] = 0
+    X2[0, i + 1] = e_2_
+    X2[1, i + 1] = e_2
+    X2[2, i + 1] = 0
+
+ff = ca.Function('ff', [U1, U2], [X1, X2], ['input_u1','input_u2'], ['states1', 'states2'])
+
+g1 = []  # 用list来存储优化目标的向量
+g2 = []  # 用list来存储优化目标的向量
+for i in range(N + 1):
+    # 这里的约束条件只有小车的坐标（x,y）必须在-2至2之间
+    # 由于xy没有特异性，所以在这个例子中顺序不重要（但是在更多实例中，这个很重要）
+    g1.append(X1[0, i] + -raduis * omega * math.sin(omega * i + 1))  #x_c'
+    g1.append(X1[1, i] + math.cos(omega * i + 1) * raduis)    #x_c
+    g2.append(X2[0, i] + raduis * omega * math.cos(omega * i + 1))   #y_c'
+    g2.append(X2[1, i] + math.sin(omega * i + 1) * raduis)   #y_c
 
 
+opt_variables1 = ca.vertcat(ca.reshape(U1, -1, 1), ca.reshape(X1, -1, 1))
+opt_variables2 = ca.vertcat(ca.reshape(U2, -1, 1), ca.reshape(X2, -1, 1))
+nlp_prob1 = {'f': obj1, 'x': opt_variables1, 'p': P1, 'g': ca.vertcat(*g1)}
+nlp_prob2 = {'f': obj2, 'x': opt_variables2, 'p': P2, 'g': ca.vertcat(*g2)}
+opts_setting = {'ipopt.max_iter': 100, 'ipopt.print_level': 5   , 'print_time': 0,
+                'ipopt.acceptable_tol': 1e-8, 'ipopt.acceptable_obj_change_tol': 1e-6}
 
+solver1 = ca.nlpsol('solver', 'ipopt', nlp_prob1, opts_setting)
+solver2 = ca.nlpsol('solver', 'ipopt', nlp_prob2, opts_setting)
 
+# 开始仿真
+## 定义约束条件，实际上CasADi需要在每次求解前更改约束条件。不过我们这里这些条件都是一成不变的
+## 因此我们定义在while循环外，以提高效率
+### 状态约束
 
-G_1 = np.zeros((4, 3))
-G_1[0, 0] = -c
-G_1[1, 0] = c
-G_1[2, 1] = -c
-G_1[3, 1] = c
-G_2 = np.zeros((4,3))
-G_2[0, 0] = -c
-G_2[1, 0] = c
-G_2[2, 1] = -c
-G_2[3, 1] = c
+### 控制约束
+lbg = []
+ubg = []
+lbx = []  # 最低约束条件
+ubx = []  # 最高约束条件
+for _ in range(N):
+    x_d = math.cos(omega * _) * raduis
+    y_d = math.sin(omega * _) * raduis  #期望轨迹
 
-h_1 = np.zeros((4, 1))
-h_1[0, :] = k_max
-h_1[1, :] = -k_min
-h_1[2, :] = d_max
-h_1[3, :] = -d_min
-h_2 = np.copy(h_1)
+    #### 记住这个顺序，不可搞混！
+    #### U是以(n_controls, N)存储的，但是在定义问题的时候被改变成(n_controlsxN,1)的向量
+    #### 实际上，第一组控制v0和omega0的index为U_0为U_1，第二组为U_2和U_3
+    #### 因此，在这里约束必须在一个循环里连续定义。
+    lbx.append(-1500) #-k/m
+    lbx.append(-100)   #-d/m
+    lbx.append(1)    #1/m
+    lbg.append(-np.inf)  #x_c'
+    lbg.append(-12 - x_d)  #x_c
+    lbg.append(-np.inf)  #f_x
 
-At_1 = np.zeros((1,3))
-At_1[0,2] = m_1
-At_2 = np.zeros((1,3))
-At_2[0,2] = m_2
-b_1 = 1.0
-b_2 = 1.0
-######约束
+    ubg.append(np.inf)
+    ubg.append(9 - y_d)
+    ubg.append(-np.inf)
+    ubx.append(-100)
+    ubx.append(-20)
+    ubx.append(1)
+for _ in range(N+1):
+    x_d = math.cos(omega * _) * raduis
+    y_d = math.sin(omega * _) * raduis  #期望轨迹
 
+    lbg.append(-np.inf)  #x_c'
+    lbg.append(-12 - x_d)  #x_c
+    lbg.append(-np.inf)  #f_x
+    ubg.append(np.inf)
+    ubg.append(9 - y_d)
+    ubg.append(-np.inf)
+## 仿真条件和相关变量
+t0 = 0.0  # 仿真时间
+x0 = np.array([0.0, 0.0, 0.0]).reshape(-1, 1)  # 机器人初始状态
+u0 = np.array([-1000, -60, 0] * N).reshape(-1, 3)  # 系统初始控制状态，为了统一本例中所有numpy有关
+# 变量都会定义成（N,状态）的形式方便索引和print
+x_c = []  # 存储系统的状态
+u_c = []  # 存储控制全部计算后的控制指令
+t_c = []  # 保存时间
+xx = []  # 存储每一步机器人位置
+sim_time = 20.0  # 仿真时长
+index_t = []  # 存储时间戳，以便计算每一步求解的时间
+## 开始仿真
+mpciter = 0  # 迭代计数器
+start_time = time.time()  # 获取开始仿真时间
+### 终止条件为小车和目标的欧式距离小于0.01或者仿真超时
+while (mpciter - sim_time / T < 0.0):
+    ### 初始化优化参数
 
-
-omega = 2
-raduis = 10
-
-########权重设计########
-
-#状态权重
-Q_1 = np.array([[0.1,0,0],
-                [0,0.1,0],
-                [0,0,20]])  # 过程损失
-Q_2 = np.array([[0.1,0,0],
-                [0,0.1,0],
-                [0,0,20]])  # 过程损失
-
-
-# S = np.array([[1,0,0],
-#               [0,1,0],
-#               [0,0,1]])  # 终端损失，这一版方案中不要这个
-# 输入权重
-R_1 = np.array([[10**(-6), 0, 0],
-              [0, 10**(-6), 0],
-              [0, 0, 10**(-6)]])  #输入损失
-R_2 = np.array([[10**(-6), 0, 0],
-              [0, 10**(-6), 0],
-              [0, 0, 10**(-6)]])  #输入损失
-
-
-
-
+    ### 初始化优化目标变量
+    init_control = ca.reshape(u0, -1, 1)
+    ### 计算结果并且
+    t_ = time.time()
+    res = solver1(x0=init_control, lbg=lbg, lbx=lbx, ubg=ubg, ubx=ubx)
+    index_t.append(time.time() - t_)
+    ### 获得最优控制结果u
+    u_sol = ca.reshape(res['x'], n_controls, N)  # 记住将其恢复U的形状定义
+    ###
+    ff_value = ff(u_sol, c_p)  # 利用之前定义ff函数获得根据优化后的结果
+    # 小车之后N+1步后的状态（n_states, N+1）
+    ### 存储结果
+    x_c.append(ff_value)
+    u_c.append(u_sol[:, 0])
+    t_c.append(t0)
+    ### 根据数学模型和MPC计算的结果移动小车并且准备好下一个循环的初始化目标
+    t0, x0, u0 = shift_movement(T, t0, x0, u_sol, f)
+    ### 存储小车的位置
+    x0 = ca.reshape(x0, -1, 1)
+    xx.append(x0.full())
+    ### 计数器+1
+    mpciter = mpciter + 1
 
 
 ################

@@ -106,9 +106,10 @@ def animate(frame_number):
 ani1 = FuncAnimation(fig, animate, frames=360, interval=20, blit=True)
 
 # 保存动画
-ani1.save('rotating_square.gif', writer='imagemagick')
+# ani1.save('rotating_square.gif', writer='imagemagick')
 
 plt.show()
+print(np.array([0.0, 0.0] * 5))
 
 
 # rect = plt.Rectangle((0, 0), 1, 1,  angle=80, fc='blue')
