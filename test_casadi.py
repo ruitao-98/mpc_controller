@@ -50,10 +50,10 @@ f = ca.Function('f', [states, controls], [rhs], ['input_state', 'control_input']
 ## 相关变量，格式(状态长度， 步长)
 U = ca.SX.sym('U', n_controls, N)  # N步内的控制输出
 X = ca.SX.sym('X', n_states, N + 1)  # N+1步的系统状态，通常长度比控制多1
-P = ca.SX.sym('P', n_states, N + 1)  # 构建问题的相关参数，也就是相关轨迹
+P = ca.SX.sym('P', n_states+n_states)  # 构建问题的相关参数，也就是相关轨迹
 # 在这里每次只需要给定当前/初始位置和目标终点位置
 ## Single Shooting 约束条件
-X[:, 0] = P[:, 0]  # 初始状态希望相等
+X[:, 0] = P[:3, 0]  # 初始状态希望相等
 ### 剩余N状态约束条件
 for i in range(N):
     # 通过前述函数获得下个时刻系统状态变化。

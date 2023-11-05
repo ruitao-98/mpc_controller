@@ -33,7 +33,6 @@ k_max = 1500
 d_min = 20
 d_max = 100
 c = m_1
-
 #旋转的角速度和旋转半径
 
 
@@ -42,17 +41,17 @@ T = 0.01  # 控制周期
 N = 5  # 需要预测的步长【超参数】
 
 ## 系统状态，分为维度1和维度2
-e_1 = ca.SX.sym('e_1')  # 位置
-e_1_ = ca.SX.sym('e_1_')  # 速度
+x_c_ = ca.SX.sym('x_c_')  # 速度
+x_c = ca.SX.sym('x_c')  # 位置
 f_x = ca.SX.sym('fx')  # 力
-states1 = ca.vertcat(e_1_, e_1)  # 构建位置速度差
+states1 = ca.vertcat(x_c_, x_c)  # 构建位置速度差
 states1 = ca.vertcat(states1, f_x)  # 包括力增广
 # states = ca.vertcat(*[x, y, theta])
 # 或者 ca.vcat([x, y, theta)一步实现
 n_states = states1.size()[0]  # 获得系统状态的尺寸，向量以（n_states, 1）的格式呈现
 
-e_2 = ca.SX.sym('e_2')  # 位置
-e_2_ = ca.SX.sym('e_2_')  # 速度
+e_2 = ca.SX.sym('y_c')  # 位置
+e_2_ = ca.SX.sym('y_c_')  # 速度
 f_y = ca.SX.sym('fy')  # 力
 states2 = ca.vertcat(e_2_, e_2)  # 构建位置速度差
 states2 = ca.vertcat(states2, f_y)  # 包括力增广
@@ -174,21 +173,7 @@ for i in range(N):
     # 在N步内对获得优化目标表达式
     obj1 = obj1 + ca.mtimes([(X1[:, i]).T, Q, X1[:, i]]) + ca.mtimes([U1[:, i].T, R, U1[:, i]])
     obj2 = obj2 + ca.mtimes([(X2[:, i]).T, Q, X2[:, i]]) + ca.mtimes([U2[:, i].T, R, U2[:, i]])
-# g1 = ca.SX.sym('g1', 2*(N + 1))  # 用list来存储优化目标的向量
-# g2 = ca.SX.sym('g1', 2*(N + 1))  # 用list来存储优化目标的向量
-# X1_sym = ca.SX.sym('X1_sym', X1.shape)
-# X2_sym = ca.SX.sym('X2_sym', X2.shape)
-# P1_sym = ca.SX.sym('P1_sym', P1.shape)
-# P2_sym = ca.SX.sym('P2_sym', P2.shape)
-# for i in range(N + 1):
-#     # 这里的约束条件只有小车的坐标（x,y）必须在-2至2之间
-#     # 由于xy没有特异性，所以在这个例子中顺序不重要（但是在更多实例中，这个很重要）
-#     g1[2*i] = X1_sym[0, i] + (-raduis * omega * ca.sin(omega * (i + P1_sym[-1])))  #x_c'
-#     g1[2*i + 1] = X1_sym[1, i] + ca.cos(omega * (i + P1_sym[-1])) * raduis    #x_c
-#     g2[2*i] = X2_sym[0, i] + raduis * omega * ca.cos(omega * (i + P2_sym[-1]))   #y_c'
-#     g2[2*i + 1] = X2_sym[1, i] + ca.sin(omega * (i + P2_sym[-1])) * raduis   #y_c
-#
-#
+
 # g1_func = ca.Function('g', [X1_sym, P1_sym], [g1])
 # g2_func = ca.Function('g', [X2_sym, P2_sym], [g2])
 
@@ -376,23 +361,6 @@ plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=Fals
 # plt.xlim(-15, 15)  # x轴范围从1到4
 # plt.ylim(-15, 15)  # y轴范围从1到5
 plt.savefig("trajectory.png", dpi=600)
-
-# plt.figure(figsize=(8, 8))  # 创建第二个画布
-# plt.step(np.arange(0, u_history1.shape[1]), u_history1[0,:],  linestyle='-', label="u1_k",linewidth = 2, c='red')
-# plt.step(np.arange(0, u_history1.shape[1]), u_history1[1,:],  linestyle='-', label="u1_d",linewidth = 2, c='blue')
-# plt.step(np.arange(0, u_history1.shape[1]), u_history1[2,:],  linestyle='-', label="u1_m",linewidth = 2, c='green')
-# plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
-#
-# plt.figure(figsize=(8, 8))  # 创建第三个画布
-# plt.step(np.arange(0, u_history2.shape[1]), u_history2[0,:],  linestyle='-', label="u2_k",linewidth = 2, c='red')
-# plt.step(np.arange(0, u_history2.shape[1]), u_history2[1,:],  linestyle='-', label="u2_d",linewidth = 2, c='blue')
-# plt.step(np.arange(0, u_history2.shape[1]), u_history2[2,:],  linestyle='-', label="u2_m",linewidth = 2, c='green')
-# plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
-#
-# plt.figure(figsize=(8, 8))  # 创建第四个画布
-# plt.plot(np.arange(0, force_history.shape[1]), force_history[0,:],  linestyle='-', label="f_x",linewidth = 2, c='red')
-# plt.plot(np.arange(0, force_history.shape[1]), force_history[1,:],  linestyle='-', label="f_y",linewidth = 2, c='blue')
-# plt.legend(loc = 'lower right', markerscale = 0.5, fontsize='medium',shadow=False,framealpha=0.5)
 
 plt.show()
 

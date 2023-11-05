@@ -109,7 +109,14 @@ ani1 = FuncAnimation(fig, animate, frames=360, interval=20, blit=True)
 # ani1.save('rotating_square.gif', writer='imagemagick')
 
 plt.show()
-print(np.array([0.0, 0.0] * 5))
+
+x0 = np.array([0.0, 0.0, 0.0]).reshape(-1, 1)
+print(x0)
+P = SX.sym('P', 6)
+print(P)
+c_p = np.concatenate((x0, np.array([[1]])))
+
+print(c_p)
 
 
 # rect = plt.Rectangle((0, 0), 1, 1,  angle=80, fc='blue')
