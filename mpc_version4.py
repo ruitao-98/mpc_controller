@@ -325,8 +325,9 @@ while (mpciter - sim_time / T < 0.0):
     # u_c.append(u_sol1[:, 0])
     # t_c.append(t0)
     ### 根据数学模型和MPC计算的结果移动小车并且准备好下一个循环的初始化目标
-    t0, x_c, x_c_, x_c__, u01 = shift_movement(T, t0, x01, u_sol1, x_d_r, x_d_r_, x_d_r__)
-    t0, y_c, y_c_, y_c__, u02 = shift_movement(T, t0, x02, u_sol2, x_d_r, x_d_r_, y_d_r__)
+    t0 = t1
+    t1, x_c, x_c_, x_c__, u01 = shift_movement(T, t0, x01, u_sol1, x_d_r, x_d_r_, x_d_r__)
+    t1, y_c, y_c_, y_c__, u02 = shift_movement(T, t0, x02, u_sol2, x_d_r, x_d_r_, y_d_r__)
 
     #计算下一次期望轨迹
     x_d_r = math.cos(omega * (mpciter + 1)*T) * raduis

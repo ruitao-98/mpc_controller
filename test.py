@@ -111,10 +111,7 @@ ani1 = FuncAnimation(fig, animate, frames=360, interval=20, blit=True)
 plt.show()
 
 x0 = np.array([0.0, 0.0, 0.0]).reshape(-1, 1)
-print(x0)
-P = SX.sym('P', 6)
-print(P)
-c_p = np.concatenate((x0, np.array([[1]])))
+c_p = np.concatenate((x0,  np.arange(0, 0 + 5).reshape(-1, 1)), axis=0)
 
 print(c_p)
 

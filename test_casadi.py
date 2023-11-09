@@ -98,10 +98,6 @@ ubg = 2.0  # x，y不得大于2
 lbx = []  # 最低约束条件
 ubx = []  # 最高约束条件
 for _ in range(N):
-    #### 记住这个顺序，不可搞混！
-    #### U是以(n_controls, N)存储的，但是在定义问题的时候被改变成(n_controlsxN,1)的向量
-    #### 实际上，第一组控制v0和omega0的index为U_0为U_1，第二组为U_2和U_3
-    #### 因此，在这里约束必须在一个循环里连续定义。
     lbx.append(-v_max)
     ubx.append(v_max)
     lbx.append(-omega_max)

@@ -144,7 +144,7 @@ for k in range(k_steps):
 
     if ((k > 20) & (k<100)):
         f_x = 100
-        f_y = 100
+        f_y = 0
         x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__
         x_c_ = x_c_ + x_c__*T
         x_c = x_c + x_c_*T

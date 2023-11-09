@@ -24,7 +24,7 @@ d_2 = 0
 k_e = 1500
 
 # 约束 两个维度设计的相同的约束条件
-k_min = 60
+k_min = 100
 k_max = 1500
 d_min = 20
 d_max = 100
@@ -64,12 +64,12 @@ raduis = 10
 ########权重设计########
 
 #状态权重
-Q_1 = np.array([[0.1,0,0],
+Q_1 = np.array([[50,0,0],
                 [0,0.1,0],
-                [0,0,20]])  # 过程损失
-Q_2 = np.array([[0.1,0,0],
+                [0,0,0.1]])  # 过程损失
+Q_2 = np.array([[50,0,0],
                 [0,0.1,0],
-                [0,0,20]])  # 过程损失
+                [0,0,0.1]])  # 过程损失
 
 
 # S = np.array([[1,0,0],
@@ -184,8 +184,8 @@ for k in range(k_steps):
     p = np.size(B_1, 0)
 
 
-    Q_bar_1, p_1, c_1 = pm.MPC_matrics_single_prediction(A_K, B_1, Q_1, R_1, X_1)
-    Q_bar_2, p_2, c_2 = pm.MPC_matrics_single_prediction(A_K, B_2, Q_2, R_2, X_2)
+    Q_bar_1, p_1, c_1 = pm.MPC_matrics_single_prediction(A_, B_1, Q_1, R_1, X_1)
+    Q_bar_2, p_2, c_2 = pm.MPC_matrics_single_prediction(A_, B_2, Q_2, R_2, X_2)
 
     u_1 = contro.MPC_single_qpsolver(Q_bar_1, p_1, c_1, p, G_1, h_1, At_1, b_1)
     u_2 = contro.MPC_single_qpsolver(Q_bar_2, p_2, c_2, p, G_2, h_2, At_2, b_2)
@@ -221,44 +221,47 @@ for k in range(k_steps):
     step = 0.1
     if ((k > 20) & (k<100)):
         f_x = 100
-        f_y = 100
+        f_y = 0
+        x_c = x_c + x_c_ * T
         x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__
         x_c_ = x_c_ + x_c__*T
-        x_c = x_c + x_c_*T
+
 
         # x_c = x_c + step
         # f_x = (x_c - x_d) * k_1
-
+        y_c = y_c + y_c_ * T
         y_c__ = (1/m_2)*(f_y - d_2*e_2_ - k_2*e_2) + y_d__
         y_c_ = y_c_ + y_c__*T
-        y_c = y_c + y_c_*T
+
         # y_c = y_c + step
         # f_y = (y_c - y_d) * k_2
     elif (k>50)&(k<70):
         f_x = f_y = 0
+        x_c = x_c + x_c_ * T
         x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__
         x_c_ = x_c_ + x_c__*T
-        x_c = x_c + x_c_*T
+
 
         # x_c = x_c - step
         # f_x = (x_c - x_d) * k_1
-
+        y_c = y_c + y_c_ * T
         y_c__ = (1/m_2)*(f_y - d_2*e_2_ - k_2*e_2) + y_d__
         y_c_ = y_c_ + y_c__*T
-        y_c = y_c + y_c_*T
+
         # y_c = y_c - step
         # f_y = (y_c - y_d) * k_2
 
     else:
         f_x = f_y = 0
+        x_c = x_c + x_c_ * T
         x_c__ = (1/m_1)*(f_x - d_1*e_1_ - k_1*e_1) + x_d__
         x_c_ = x_c_ + x_c__*T
-        x_c = x_c + x_c_*T
-        # f_x = -k_e * T * e_1_ + f_x
 
+        # f_x = -k_e * T * e_1_ + f_x
+        y_c = y_c + y_c_ * T
         y_c__ = (1/m_2)*(f_y - d_2*e_2_ - k_2*e_2) + y_d__
         y_c_ = y_c_ + y_c__*T
-        y_c = y_c + y_c_*T
+
         # f_y = -k_e * T * e_2_ + f_y
 
 
